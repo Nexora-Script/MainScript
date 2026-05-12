@@ -376,29 +376,29 @@ end
 local function LoadConfig()
 
 -- =============================================================================
--- KEYBIND SYSTEM v2 — Direct Callback Dispatch (no :Fire() on signals)
+-- KEYBIND SYSTEM v2 - Direct Callback Dispatch (no :Fire() on signals)
 -- =============================================================================
 
--- ── Step 1: Wipe stale keybind save so defaults are always correct ───────────
+-- -- Step 1: Wipe stale keybind save so defaults are always correct -----------
 local KEYBIND_FILE = "ElianaHub_Keybinds_V2.json"
 if isfile(KEYBIND_FILE) then
     delfile(KEYBIND_FILE)
 end
 
--- ── Step 2: Callback registry — populated automatically by createShape ────────
+-- -- Step 2: Callback registry - populated automatically by createShape --------
 -- ButtonCallbacks[btnName] = the raw function passed to createShape
 -- We monkey-patch createShape BEFORE buttons are registered.
 -- But since buttons are already created by now (after LoadConfig), we rebuild
 -- from CreatedButtons using a parallel table populated at create time.
--- The original createShape stored callbacks via :Connect — we can't retrieve them.
+-- The original createShape stored callbacks via :Connect - we can't retrieve them.
 -- Solution: store callbacks in a global table DURING createShape calls.
 -- Since keybind block runs AFTER all createShapes, we use a second approach:
 -- Re-read the callback table that was built at createShape time.
 -- This requires patching createShape BEFORE the buttons are made.
--- Since this block runs AFTER, we directly hardcode button→action mapping here
+-- Since this block runs AFTER, we directly hardcode button->action mapping here
 -- using the same logic already in each button, wrapped in a dispatch table.
 
--- ── Step 3: Direct action dispatch table ─────────────────────────────────────
+-- -- Step 3: Direct action dispatch table -------------------------------------
 -- Each entry calls the same logic as the corresponding mobile button.
 -- This avoids :Fire() entirely.
 
@@ -542,7 +542,7 @@ ButtonActions["Aim_Btn"] = function()
     if getgenv()._AimToggle then getgenv()._AimToggle() end
 end
 
--- ── Step 4: Keybind map (key name → button name) ─────────────────────────────
+-- -- Step 4: Keybind map (key name -> button name) -----------------------------
 -- These are the DEFAULT bindings. Edit here to change them permanently.
 local Keybinds = {
     ["Z"] = "Shoot_Btn",
@@ -557,7 +557,7 @@ local Keybinds = {
 -- Persist to file so Manager tab can optionally reload them
 writefile(KEYBIND_FILE, HttpService:JSONEncode(Keybinds))
 
--- ── Step 5: PC auto-detection — hide all mobile buttons immediately ───────────
+-- -- Step 5: PC auto-detection - hide all mobile buttons immediately -----------
 local function IsPC()
     return UserInputService.KeyboardEnabled
 end
@@ -581,7 +581,7 @@ UserInputService:GetPropertyChangedSignal("KeyboardEnabled"):Connect(function()
     end
 end)
 
--- ── Step 6: Keyboard input handler ───────────────────────────────────────────
+-- -- Step 6: Keyboard input handler -------------------------------------------
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
@@ -600,7 +600,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- ── Step 7: Manager tab — PC Mode toggle & keybind info ──────────────────────
+-- -- Step 7: Manager tab - PC Mode toggle & keybind info ----------------------
 Tabs.Manager:Divider()
 Tabs.Manager:Section({ ["Title"] = "PC Keybinds" })
 
@@ -1415,7 +1415,7 @@ ShapeBtn.MouseButton1Click:Connect(function()
     Dropdown.Size = Dropdown.Visible and UDim2.new(1, 0, 0, 125) or UDim2.new(1, 0, 0, 0)
 end)
 
--- ── HIDE/SHOW ROW ────────────────────────────────────────────────────────────
+-- -- HIDE/SHOW ROW ------------------------------------------------------------
 -- A full-width button that hides or shows the currently selected quick button.
 -- State is saved to SAVE_FILE so it persists across sessions.
 
@@ -1473,7 +1473,7 @@ HideBtn.MouseButton1Click:Connect(function()
     SaveConfig()
 end)
 
--- ── BOTTOM ROW (Reset / Exit / Save) ─────────────────────────────────────────
+-- -- BOTTOM ROW (Reset / Exit / Save) -----------------------------------------
 
 local ResetBtn = Instance.new("TextButton", Content)
 ResetBtn.Size = UDim2.new(0, 65, 0, 26)
@@ -1834,7 +1834,7 @@ local function RebuildSPList()
             end
             SaveConfig()
             RebuildSPList()
-            SendNexoraNotification("Unhide", name:gsub("_Btn", 2, nil)
+            SendNexoraNotification("Unhide", name:gsub("_Btn", "") .. " restored", 2, nil)
         end)
     end
 
@@ -2022,7 +2022,8 @@ task.spawn(function()
                     local dist3D = (myRoot.Position - part.Position).Magnitude
                     if dist3D < SilentSettings.MaxDistance then
                         -- Screen distance for mouse mode
-                        local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                        local screenPos = Camera:WorldToViewportPoint(part.Position)
+                        local onScreen = screenPos.Z > 0
                         local screenDist = onScreen
                             and (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
                             or math.huge
@@ -2036,7 +2037,7 @@ task.spawn(function()
                 end
             end
 
-            -- Role-aware priority: if YOU have knife → prefer Sheriff, if YOU have gun → prefer Murderer
+            -- Role-aware priority: if YOU have knife -> prefer Sheriff, if YOU have gun -> prefer Murderer
             local myBP = LocalPlayer.Backpack
             local myChar2 = LocalPlayer.Character
             local iHaveKnife = myBP and (myBP:FindFirstChild("Knife") or (myChar2 and myChar2:FindFirstChild("Knife")))
@@ -2085,11 +2086,13 @@ task.spawn(function()
             end
 
             CurrentTargetPart = target
-            if target then
+            if target and target.Parent then
                 CurrentTargetPos = target.Position
-                CurrentTargetVelocity = target.Velocity
+                CurrentTargetVelocity = target.AssemblyLinearVelocity or target.Velocity or Vector3.new(0,0,0)
             else
-                CurrentTargetPos = nil; CurrentTargetVelocity = nil
+                CurrentTargetPart = nil
+                CurrentTargetPos = nil
+                CurrentTargetVelocity = nil
             end
         else
             CurrentTargetPart = nil; CurrentTargetPos = nil; CurrentTargetVelocity = nil
@@ -2113,14 +2116,15 @@ mt.__namecall = newcclosure(function(self, ...)
         and CurrentTargetPos and CurrentTargetVelocity
     then
         local isKnife = (name == "KnifeThrown")
+        local safeVel = CurrentTargetVelocity or Vector3.new(0, 0, 0)
 
-        if SilentSettings.AimMode == "Instant Throw" then
-            -- V39: full velocity + gravity prediction, lookAt CFrame
+        if SilentSettings.AimMode == "Silent Aim" then
+            -- V39: full velocity + gravity prediction, lookAt redirect (used with visual)
             local t = isKnife
                 and (SilentSettings.KnifePrediction * SilentSettings.ThrowMulti)
                 or SilentSettings.GunPrediction
-            local predictedPos = CurrentTargetPos + (CurrentTargetVelocity * t)
-            if math.abs(CurrentTargetVelocity.Y) > 1 then
+            local predictedPos = CurrentTargetPos + (safeVel * t)
+            if math.abs(safeVel.Y) > 1 then
                 predictedPos = predictedPos + Vector3.new(0, 0.5 * SilentSettings.GravityAdjustment * (t ^ 2), 0)
             end
             if typeof(args[1]) == "CFrame" then
@@ -2130,9 +2134,9 @@ mt.__namecall = newcclosure(function(self, ...)
             end
 
         else
-            -- V22: classic silent aim, preserve original rotation
+            -- Instant Throw (V22): simple snappy redirect, preserves original throw arc rotation
             local t = isKnife and SilentSettings.KnifePrediction or SilentSettings.GunPrediction
-            local predictedPos = CurrentTargetPos + (CurrentTargetVelocity * t)
+            local predictedPos = CurrentTargetPos + (safeVel * t)
             if typeof(args[1]) == "CFrame" then
                 args[1] = CFrame.new(predictedPos) * args[1].Rotation
                 return oldNamecall(self, unpack(args))
@@ -2163,7 +2167,7 @@ Tabs.Main:Toggle({
 
 Tabs.Main:Toggle({
     ["Title"] = "Show Aim Visual",
-    ["Desc"] = "Displays a laser beam + bracket from your right arm to the locked target. Red = Murderer, Blue = Sheriff, Green = other.",
+    ["Desc"] = "Displays a laser + bracket from your right arm to the target. Only works in Silent Aim mode. Red = Murderer, Blue = Sheriff, Green = other.",
     ["Value"] = false,
     ["Callback"] = function(state)
         SilentSettings.VisualEnabled = state
@@ -2173,7 +2177,7 @@ Tabs.Main:Toggle({
 
 Tabs.Main:Dropdown({
     ["Title"]  = "Aim Mode",
-    ["Desc"]   = "Silent Aim: classic redirect (preserves throw arc). Instant Throw: full velocity + gravity prediction.",
+    ["Desc"]   = "Silent Aim: full velocity + gravity prediction with visual laser (V39). Instant Throw: simple snappy redirect, no visual (V22).",
     ["Values"] = {"Silent Aim", "Instant Throw"},
     ["Value"]  = "Silent Aim",
     ["Multi"]  = false,
@@ -2238,7 +2242,7 @@ Tabs.Main:Toggle({
             label.TextStrokeTransparency = 0.4
             label.TextStrokeColor3 = Color3.fromRGB(40,0,70)
 
-            -- 🔍 Find timer object
+            --  Find timer object
             local function findTimer()
                 for _, obj in ipairs(workspace:GetDescendants()) do
                     if obj:GetAttribute("Time") ~= nil then
@@ -2259,7 +2263,7 @@ Tabs.Main:Toggle({
                 repeat task.wait() until target
             end
 
-            -- 🔄 Update
+            --  Update
             local function update()
                 if not TimerEnabled then return end
                 if not target then return end
@@ -2567,7 +2571,7 @@ do
             if not myHRP then return end
             if not FA_hasKnife() then
                 FA_deactivate()
-                SendNexoraNotification("Freeze Aura", "Knife removed — deactivated.", 3, "x")
+                SendNexoraNotification("Freeze Aura", "Knife removed - deactivated.", 3, "x")
                 return
             end
             local myPos = myHRP.Position
@@ -2630,7 +2634,7 @@ do
             if State then
                 local ok = FA_activate()
                 if ok then
-                    SendNexoraNotification("Freeze Aura", "Active — get close to freeze players!", 4, "snowflake")
+                    SendNexoraNotification("Freeze Aura", "Active - get close to freeze players!", 4, "snowflake")
                 end
             else
                 FA_deactivate()
@@ -4650,7 +4654,7 @@ Tabs.ESP:Toggle({
         AutoGunEnabled = State
         if State then
             StartAutoGun()
-            SendNexoraNotification("Auto Gun", "Enabled — will grab gun when it drops", 3, "check")
+            SendNexoraNotification("Auto Gun", "Enabled - will grab gun when it drops", 3, "check")
         else
             StopAutoGun()
             SendNexoraNotification("Auto Gun", "Disabled", 3, "x")
@@ -4677,7 +4681,7 @@ local function StartGunAvailableNotif()
             local now = os.clock()
             if now - GunAvailableLastNotif > 10 then
                 GunAvailableLastNotif = now
-                SendNexoraNotification("Gun Available!", "A gun has dropped — go get it!", 5, "rbxassetid://89804924525665")
+                SendNexoraNotification("Gun Available!", "A gun has dropped - go get it!", 5, "rbxassetid://89804924525665")
             end
             break
         end
@@ -4689,7 +4693,7 @@ local function StartGunAvailableNotif()
         local now = os.clock()
         if now - GunAvailableLastNotif > 10 then
             GunAvailableLastNotif = now
-            SendNexoraNotification("Gun Available!", "A gun has dropped — go get it!", 5, "rbxassetid://89804924525665")
+            SendNexoraNotification("Gun Available!", "A gun has dropped - go get it!", 5, "rbxassetid://89804924525665")
         end
     end)
 end
@@ -4955,7 +4959,7 @@ Tabs.Economy:Toggle({
 
 Tabs.Economy:Dropdown({
     ["Title"] = "Coin Economy Mode",
-    ["Desc"] = "Ana hedef coin'i nasıl seçeğini belirle",
+    ["Desc"] = "Ana hedef coin'i nasil seeini belirle",
     ["Values"] = { "Nearest", "Random" },
     ["Value"] = "Nearest",
     ["Callback"] = function(Value)
@@ -5969,7 +5973,7 @@ Info:Section({
 
 Info:Paragraph({
     ["Title"] = "Added Features",
-    ["Desc"] = "• Quick Buttons For PC\n• Auto Get Gun\n• Remove unnecessary buttons, unhide\n• Disable auto unequip after shoot\n• Round Timer\n• Silent Throw (main)",
+    ["Desc"] = "- Quick Buttons For PC\n- Auto Get Gun\n- Remove unnecessary buttons, unhide\n- Disable auto unequip after shoot\n- Round Timer\n- Silent Throw (main)",
     ["Image"] = "rbxassetid://89804924525665",
     ["ImageSize"] = 30
 })
