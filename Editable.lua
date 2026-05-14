@@ -160,6 +160,226 @@ local function SendNexoraNotification(title, text, duration, icon)
     end
 end
 
+-- ==================== LOADING SCREEN ====================
+do
+    local CoreGui = game:GetService("CoreGui")
+    local TweenService = game:GetService("TweenService")
+
+    -- Asset loader helper
+    local sessionID = tostring(math.random(1000, 9999))
+    local function LoadAsset(name, url, ext)
+        local fileName = name .. ext
+        if not isfile(fileName) then writefile(fileName, game:HttpGet(url)) end
+        return getcustomasset(fileName)
+    end
+
+    local delFontUrl = "https://cdn.discordapp.com/attachments/1496654488776474734/1504148787042451499/DELIRIUM_NCV.ttf?ex=6a05ef38&is=6a049db8&hm=203dd3a720cbea7d8f7d852e05c293e304cd2720592239a1c400975c4dd66290&"
+    local coolFontUrl = "https://cdn.discordapp.com/attachments/1496654488776474734/1504153418103525456/Coolvetica_Rg.otf?ex=6a05f388&is=6a04a208&hm=ca70b0e6493269b129553cc657f480023cae0cdb5c95d88807ef2eb7d7b0be0e&"
+    local bgImageUrl  = "https://cdn.discordapp.com/attachments/1496654488776474734/1504239663051702323/craiyon_055056_image.png?ex=6a0643db&is=6a04f25b&hm=30ec820ff6200f194442302eeed57e5909b76b2f71437d01bffe71a61258de80&"
+
+    local deliriumFile   = pcall(LoadAsset, "Delirium_"..sessionID,   delFontUrl,  ".otf") and LoadAsset("Delirium_"..sessionID, delFontUrl, ".otf") or nil
+    local coolveticaFile = pcall(LoadAsset, "Coolvetica_"..sessionID, coolFontUrl, ".otf") and LoadAsset("Coolvetica_"..sessionID, coolFontUrl, ".otf") or nil
+    local bgAsset        = pcall(LoadAsset, "Background_"..sessionID, bgImageUrl,  ".png") and LoadAsset("Background_"..sessionID, bgImageUrl, ".png") or nil
+
+    local _ok1, deliriumFile   = pcall(LoadAsset, "Delirium_"..sessionID,   delFontUrl,  ".otf")
+    local _ok2, coolveticaFile = pcall(LoadAsset, "Coolvetica_"..sessionID, coolFontUrl, ".otf")
+    local _ok3, bgAsset        = pcall(LoadAsset, "Background_"..sessionID, bgImageUrl,  ".png")
+
+    -- Screen container
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ElianaLoader"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.DisplayOrder = 999
+    pcall(function() ScreenGui.Parent = CoreGui end)
+    if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+    local Tab = Instance.new("Frame", ScreenGui)
+    Tab.Name = "ElianaHub_Loader"
+    Tab.Size = UDim2.new(0, 480, 0, 160)
+    Tab.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Tab.AnchorPoint = Vector2.new(0.5, 0.5)
+    Tab.BackgroundColor3 = Color3.fromRGB(5, 5, 7)
+    Tab.BorderSizePixel = 0
+    Tab.ClipsDescendants = true
+    Instance.new("UICorner", Tab).CornerRadius = UDim.new(0, 10)
+
+    -- Background image
+    local Background = Instance.new("ImageLabel", Tab)
+    Background.Size = UDim2.new(1.05, 0, 1.05, 0)
+    Background.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Background.AnchorPoint = Vector2.new(0.5, 0.5)
+    Background.Image = _ok3 and bgAsset or ""
+    Background.ScaleType = Enum.ScaleType.Crop
+    Background.BackgroundTransparency = 1
+    Background.ImageColor3 = Color3.fromRGB(150, 120, 200)
+    Background.ZIndex = 1
+
+    -- Depth layer
+    local DepthLayer = Instance.new("ImageLabel", Tab)
+    DepthLayer.Size = UDim2.new(1.05, 0, 1.05, 0)
+    DepthLayer.Position = UDim2.new(0.5, 0, 0.5, 0)
+    DepthLayer.AnchorPoint = Vector2.new(0.5, 0.5)
+    DepthLayer.Image = _ok3 and bgAsset or ""
+    DepthLayer.ScaleType = Enum.ScaleType.Crop
+    DepthLayer.BackgroundTransparency = 1
+    DepthLayer.ImageTransparency = 0.72
+    DepthLayer.ZIndex = 4
+
+    -- Loading spinner (bottom right)
+    local LoaderContainer = Instance.new("Frame", Tab)
+    LoaderContainer.Size = UDim2.new(0, 24, 0, 24)
+    LoaderContainer.Position = UDim2.new(1, -35, 1, -35)
+    LoaderContainer.BackgroundTransparency = 1
+    LoaderContainer.ZIndex = 12
+    local LoaderFallback = Instance.new("Frame", LoaderContainer)
+    LoaderFallback.Size = UDim2.new(1, 0, 1, 0)
+    LoaderFallback.BackgroundTransparency = 1
+    Instance.new("UICorner", LoaderFallback).CornerRadius = UDim.new(1, 0)
+    local SpinStroke = Instance.new("UIStroke", LoaderFallback)
+    SpinStroke.Thickness = 2.5
+    SpinStroke.Color = Color3.fromRGB(200, 160, 255)
+    local SpinGrad = Instance.new("UIGradient", SpinStroke)
+    SpinGrad.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0),
+        NumberSequenceKeypoint.new(0.75, 0),
+        NumberSequenceKeypoint.new(0.76, 1),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+
+    -- Title shadow
+    local TitleShadow = Instance.new("TextLabel", Tab)
+    TitleShadow.Size = UDim2.new(0.9, 0, 0, 100)
+    TitleShadow.Position = UDim2.new(0.5, 2, 0.42, 2)
+    TitleShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+    TitleShadow.BackgroundTransparency = 1
+    TitleShadow.Text = "ELIANA HUB"
+    TitleShadow.TextScaled = true
+    TitleShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+    TitleShadow.TextTransparency = 0.6
+    TitleShadow.ZIndex = 2
+
+    -- Main title
+    local MainTitle = Instance.new("TextLabel", Tab)
+    MainTitle.Size = UDim2.new(0.9, 0, 0, 100)
+    MainTitle.Position = UDim2.new(0.5, 0, 0.42, 0)
+    MainTitle.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainTitle.BackgroundTransparency = 1
+    MainTitle.Text = "ELIANA HUB"
+    MainTitle.TextScaled = true
+    MainTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MainTitle.ZIndex = 3
+    local MainGrad = Instance.new("UIGradient", MainTitle)
+    MainGrad.Rotation = 60
+    MainGrad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 200, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 80, 255))
+    })
+
+    -- Flare line
+    local FlareLine = Instance.new("Frame", Tab)
+    FlareLine.Size = UDim2.new(0.6, 0, 0, 2)
+    FlareLine.Position = UDim2.new(0.5, 0, 0.45, 29)
+    FlareLine.AnchorPoint = Vector2.new(0.5, 0.5)
+    FlareLine.BorderSizePixel = 0
+    FlareLine.ZIndex = 5
+    local FlareGrad = Instance.new("UIGradient", FlareLine)
+    FlareGrad.Color = ColorSequence.new(Color3.fromRGB(160, 80, 255))
+    FlareGrad.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.5, 0),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+
+    -- Subtitle
+    local SubTitle = Instance.new("TextLabel", Tab)
+    SubTitle.Size = UDim2.new(0.8, 0, 0, 20)
+    SubTitle.Position = UDim2.new(0.5, 0, 0.45, 45)
+    SubTitle.AnchorPoint = Vector2.new(0.5, 0.5)
+    SubTitle.BackgroundTransparency = 1
+    SubTitle.Text = "MURDER MYSTERY 2"
+    SubTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SubTitle.TextSize = 12
+    SubTitle.ZIndex = 10
+
+    -- Font loading
+    task.spawn(function()
+        while task.wait(0.5) do
+            if not MainTitle.Parent then break end
+            local function GetFont(name, assetId)
+                local jsonFile = name .. ".json"
+                writefile(jsonFile, HttpService:JSONEncode({
+                    name = name,
+                    faces = {{ name = "Regular", weight = 400, style = "normal", assetId = assetId }}
+                }))
+                return getcustomasset(jsonFile)
+            end
+            if _ok1 then
+                local d = GetFont("Delirium_"..sessionID, deliriumFile)
+                MainTitle.FontFace = Font.new(d)
+                TitleShadow.FontFace = Font.new(d)
+            end
+            if _ok2 then
+                SubTitle.FontFace = Font.new(GetFont("Coolvetica_"..sessionID, coolveticaFile))
+            end
+            break
+        end
+    end)
+
+    -- Animation loop
+    local loaderActive = true
+    task.spawn(function()
+        local t = 0
+        while loaderActive do
+            t = t + task.wait()
+            LoaderContainer.Rotation = t * 250
+            MainGrad.Offset = Vector2.new(math.sin(t * 0.8), 0)
+            local w = math.sin(t * 1.2) * 0.008
+            Background.Position = UDim2.new(0.5 + w, 0, 0.5, 0)
+            DepthLayer.Position = UDim2.new(0.5 + (w * 0.4), 0, 0.5, 0)
+            if math.random(1, 12) == 1 then
+                local p = Instance.new("Frame", Tab)
+                p.Size = UDim2.new(0, 1, 0, 1)
+                p.BackgroundColor3 = Color3.fromRGB(200, 180, 255)
+                p.Position = UDim2.new(math.random(), 0, math.random(), 0)
+                p.ZIndex = 3
+                task.spawn(function()
+                    TweenService:Create(p, TweenInfo.new(3, Enum.EasingStyle.Linear), {
+                        Position = UDim2.new(
+                            p.Position.X.Scale + (math.random() - 0.5) * 0.2, 0,
+                            p.Position.Y.Scale + (math.random() - 0.5) * 0.2, 0
+                        ),
+                        BackgroundTransparency = 1
+                    }):Play()
+                    task.wait(3)
+                    p:Destroy()
+                end)
+            end
+        end
+    end)
+
+    -- Hold for 3 seconds then fade out and destroy before WindUI loads
+    task.wait(3)
+    loaderActive = false
+    TweenService:Create(Tab, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0.5, 0, 0.45, 0)
+    }):Play()
+    for _, v in ipairs(Tab:GetDescendants()) do
+        if v:IsA("TextLabel") or v:IsA("ImageLabel") or v:IsA("Frame") then
+            pcall(function()
+                TweenService:Create(v, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
+                    BackgroundTransparency = 1,
+                    TextTransparency = 1,
+                    ImageTransparency = 1
+                }):Play()
+            end)
+        end
+    end
+    task.wait(0.65)
+    ScreenGui:Destroy()
+end
+
 -- ==================== THEME MANAGEMENT ====================
 local ThemesList = {
     "Dark",
