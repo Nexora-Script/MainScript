@@ -2154,7 +2154,17 @@ local CurrentTargetPart = nil
 local CurrentTargetPos = nil
 local CurrentTargetVelocity = nil
 
--- Aim Visual (Laser + Billboard)
+-- Dynamic aim height based on target vertical velocity
+local function GetPredictedHeightOffset(velocity)
+    if velocity.Y > 5 then
+        return Vector3.new(0, 1.2, 0)  -- Jumping: aim upper body
+    elseif velocity.Y < -5 then
+        return Vector3.new(0, -1.5, 0) -- Falling: aim legs
+    end
+    return Vector3.new(0, 0, 0)
+end
+
+-- Aim Visual (Piercing Laser + Billboard)
 local AimVisualPart = Instance.new("Part")
 AimVisualPart.Name = "SilentAimLaser"
 AimVisualPart.Anchored = true
@@ -2165,7 +2175,7 @@ AimVisualPart.Transparency = 1
 AimVisualPart.Parent = workspace
 
 local AimLockGui = Instance.new("BillboardGui")
-AimLockGui.Size = UDim2.new(4, 0, 4, 0)
+AimLockGui.Size = UDim2.new(3, 0, 3, 0)
 AimLockGui.AlwaysOnTop = true
 AimLockGui.Enabled = false
 
@@ -2200,17 +2210,20 @@ local function GetSilentRole(Player)
     return "Innocent"
 end
 
--- Render loop: laser + billboard
+-- Render loop: piercing laser + billboard
 RunService.RenderStepped:Connect(function()
     local char = LocalPlayer.Character
     local arm = char and char:FindFirstChild("RightLowerArm")
     if SilentSettings.VisualEnabled and arm and CurrentTargetPart then
         local startPos = arm.Position
-        local endPos = CurrentTargetPart.Position
-        local dist = (startPos - endPos).Magnitude
-        AimVisualPart.Size = Vector3.new(0.08, 0.08, dist)
-        AimVisualPart.CFrame = CFrame.lookAt(startPos, endPos) * CFrame.new(0, 0, -dist / 2)
-        AimVisualPart.Transparency = 0.4
+        local heightOff = GetPredictedHeightOffset(CurrentTargetPart.Velocity)
+        local aimPos = CurrentTargetPart.Position + heightOff
+        -- Piercing: laser passes THROUGH the target at fixed 100 stud length
+        local direction = (aimPos - startPos).Unit
+        local projectDist = 100
+        AimVisualPart.Size = Vector3.new(0.06, 0.06, projectDist)
+        AimVisualPart.CFrame = CFrame.lookAt(startPos, startPos + direction) * CFrame.new(0, 0, -projectDist / 2)
+        AimVisualPart.Transparency = 0.5
         local tp = Players:GetPlayerFromCharacter(CurrentTargetPart.Parent)
         local role = GetSilentRole(tp)
         local col = (role == "Murderer" and Color3.fromRGB(255, 50, 50))
@@ -2229,7 +2242,7 @@ end)
 
 -- Targeting loop (DetectMode-aware)
 task.spawn(function()
-    while task.wait(0.05) do
+    while task.wait(0.03) do -- V40: faster polling
         local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if myRoot and SilentSettings.Enabled then
             local potential = {}
@@ -2339,11 +2352,13 @@ mt.__namecall = newcclosure(function(self, ...)
         local safeVel = CurrentTargetVelocity or Vector3.new(0, 0, 0)
 
         if SilentSettings.AimMode == "Silent Aim" then
-            -- V39: full velocity + gravity prediction, lookAt redirect (used with visual)
+            -- V40: full velocity + gravity + dynamic height offset prediction, lookAt redirect
             local t = isKnife
                 and (SilentSettings.KnifePrediction * SilentSettings.ThrowMulti)
                 or SilentSettings.GunPrediction
-            local predictedPos = CurrentTargetPos + (safeVel * t)
+            local heightOffset = GetPredictedHeightOffset(safeVel)
+            local basePos = CurrentTargetPos + heightOffset
+            local predictedPos = basePos + (safeVel * t)
             if math.abs(safeVel.Y) > 1 then
                 predictedPos = predictedPos + Vector3.new(0, 0.5 * SilentSettings.GravityAdjustment * (t ^ 2), 0)
             end
