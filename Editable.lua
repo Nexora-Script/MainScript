@@ -5052,7 +5052,7 @@ Tabs.Economy:Button({
         ["Icon"] = "check"
     },
     ["Callback"] = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/UniversalScripter1/ProjectNexora/refs/heads/main/CheckerValue.lua"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Nexora-Script/MainScript/refs/heads/main/CheckerValue.lua"))()
     end
 })
 
